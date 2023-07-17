@@ -24,17 +24,21 @@ class Game {
             byValue += 3;
         }
         this.score += byValue * this.multiplier;
+        console.log(`Le score a augmenté de ${byValue * this.multiplier}. Nouveau score : ${this.score}`)
         this.refreshPurchaseOptions();
     }
 
     refreshPurchaseOptions() {
         ['multiplier', 'autoclick', 'bonus'].forEach(item => {
-            if (this.score >= this[item + 'Price'] && this[item + 'Purchases'] < 4) {
+            if (this.score >= this[item + 'Purchases'] < 4) {
                 document.querySelector(`.${item} button`).disabled = false;
                 document.querySelector(`.${item} button`).style.backgroundColor = '#007BFF';
+            } else if (this[item + 'Purchases'] >= 4) {
+                alert(`Vous avez atteint le nombre maximal d'achats pour ${item}.`);
+                document.querySelector(`.${item} button`).disabled = true;
             }
         });
-    }
+    }    
 
     decrementScore(byValue) {
         this.score -= byValue;
@@ -128,6 +132,10 @@ class Game {
         this.addToInventory(pokemon);
         this.refreshScore();
         this.removePokemon(pokemon);
+        const pokemonDiv = document.getElementById(`pokemon${pokemon.id}`);
+        if (pokemonDiv) {
+            this.removePokemonDiv(pokemonDiv);
+        }
     }
 
     buyMultiplier() {
@@ -166,13 +174,15 @@ class Game {
                 this.resetBonus();
             }
         }, 1000);
+
+        bonusButton.style.backgroundColor = "#ef594f";
     }
 
     resetBonus() {
         this.bonusActive = false;
         document.querySelector(".bonus").disabled = false;
         const bonusButton = document.querySelector(".bonus button");
-        bonusButton.innerHTML = "Bonus <span class='bonus-price' data-letters='500'></span><span class='bonus-price' data-letters='500'></span>";
+        bonusButton.innerHTML = "<div class='pokemon-ball'></div> <a> Bonus <span class='bonus-price' data-letters='500'></span><span class='bonus-price' data-letters='500'></span></a>";
     }
 
     updatePrice(item) {
@@ -246,6 +256,7 @@ class WebGame extends Game {
         document.getElementById('generate').addEventListener('click', this.playGame.bind(this));
         document.getElementById('reset').addEventListener('click', this.resetGame.bind(this));
     }
+
     async generatePokemon() {
         const randomId = Math.floor(Math.random() * 1010) + 1;
         const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${randomId}`);
@@ -255,15 +266,6 @@ class WebGame extends Game {
 
         this.pokemonList.push(pokemon);
         this.displayPokemon(pokemon);
-    }
-
-    addToInventory(pokemon) {
-        const img = document.createElement('img');
-        img.src = pokemon.image;
-        img.alt = pokemon.name;
-        img.style.width = "25px";
-        img.style.height = "25px";
-        document.querySelector('#inventory-box').appendChild(img);
     }
 
     createPokemonDiv(pokemon) {
@@ -290,10 +292,39 @@ class WebGame extends Game {
             this.addToInventory(pokemon);
             this.incrementScore();
             this.refreshScore();
-            pokemonDiv.remove();
+            this.removePokemonDiv(pokemonDiv);
             await this.generatePokemon();
             await this.generatePokemon();
         });
+    }
+
+    addToInventory(pokemon) {
+        const img = document.createElement('img');
+        img.src = pokemon.image;
+        img.alt = pokemon.name;
+        img.style.width = "25px";
+        img.style.height = "25px";
+        document.querySelector('#inventory-box').appendChild(img);
+    }
+
+    removePokemonDiv(pokemonDiv) {
+        pokemonDiv.remove();
+    }
+
+    movePokemon() {
+        const animate = () => {
+            for (let pokemon of this.pokemonList) {
+                pokemon.update();
+                const pokemonDiv = document.getElementById(`pokemon${pokemon.id}`);
+                if (pokemonDiv) {
+                    pokemonDiv.style.left = `${pokemon.x}px`;
+                    pokemonDiv.style.top = `${pokemon.y}px`;
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        animate();
     }
 
     async playGame() {
@@ -339,29 +370,13 @@ class WebGameWithMalus extends WebGame {
                         "Vous n'avez pas assez de Pokémon dans votre inventaire pour subir ce malus !"
                     );
                 }
-                pokemonDiv.remove();
+                this.removePokemonDiv(pokemonDiv);
             });
         } else {
             overlay.style.display = "none";
         }
 
         return pokemonDiv;
-    }
-
-    movePokemon() {
-        const animate = () => {
-            for (let pokemon of this.pokemonList) {
-                pokemon.update();
-                const pokemonDiv = document.getElementById(`pokemon${pokemon.id}`);
-                if (pokemonDiv) {
-                    pokemonDiv.style.left = `${pokemon.x}px`;
-                    pokemonDiv.style.top = `${pokemon.y}px`;
-                }
-            }
-            requestAnimationFrame(animate);
-        }
-
-        animate();
     }
 
     removeFromInventory(count) {
